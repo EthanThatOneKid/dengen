@@ -12,7 +12,7 @@ proposal, <https://github.com/denoland/deno/issues/19176>.
 To run the tool from source, use the following command:
 
 ```sh
-deno run -A cli/main.ts --verbose ./examples/with_generate_art.ts
+deno run -A cli/main.ts --verbose ./examples/with_generate_docs.ts
 ```
 
 ---

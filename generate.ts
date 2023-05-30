@@ -1,4 +1,4 @@
-import { createGraph, getLogger } from "./deps.ts";
+import { createGraph, dirname, getLogger } from "./deps.ts";
 import { parseComments } from "./parse/mod.ts";
 
 /**
@@ -9,15 +9,49 @@ export async function generate(options: GenerateOptions): Promise<void> {
   const graph = await createGraph(options.rootSpecifiers);
   for (const module of graph.modules) {
     const specifier = new URL(module.specifier);
-    logger().info(specifier);
+    logger().info(`Generating ${specifier}`);
     const content = await Deno.readTextFile(specifier);
     const comments = parseComments(content);
-    console.log({ content, comments });
+    const aliases = new Map<string, string[]>();
+    for (const comment of comments) {
+      if (comment.alias) {
+        aliases.set(comment.alias, comment.args);
+        continue;
+      }
 
-    // TODO: Move Dengen to etok.codes/deno_generate.
-    // TODO: Finish implementing generate function.
-    // See:
-    // https://github.com/EthanThatOneKid/deno_generate/tree/dev/lib/parse
+      const args = aliases.has(comment.args[0])
+        ? aliases.get(comment.args[0])!.concat(comment.args.slice(1))
+        : comment.args;
+      const cwd = new URL(dirname(module.specifier));
+      const details = args.join(" ");
+      if (options.trace) {
+        console.log(details);
+      }
+
+      if (options.dryRun) {
+        continue;
+      }
+
+      const command = new Deno.Command(args[0], {
+        args: args.slice(1),
+        cwd,
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const process = command.spawn();
+      if (options.verbose) {
+        process.stdout.pipeTo(Deno.stdout.writable);
+        process.stderr.pipeTo(Deno.stderr.writable);
+      }
+
+      const status = await process.status;
+      if (!status.success) {
+        logger().error(`Failed to execute ${details}`);
+        break;
+      }
+
+      logger().info(`Successfully executed ${details}`);
+    }
   }
 
   logger().info(JSON.stringify(graph, undefined, "  "));
@@ -43,6 +77,11 @@ export interface GenerateOptions {
    * the commands as they are executed.
    */
   trace: boolean;
+
+  /**
+   * verbose is whether to print verbose output.
+   */
+  verbose: boolean;
 
   /**
    * run is a list of procedure patterns to run. It specifies a regular

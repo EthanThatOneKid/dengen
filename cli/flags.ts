@@ -12,7 +12,6 @@ import type { GenerateOptions } from "../mod.ts";
  * toGenerateOptions converts CLI flags to GenerateOptions.
  */
 export function toGenerateOptions(flags: GenerateFlags): GenerateOptions {
-  console.log({ flags });
   return {
     rootSpecifiers: flags["_"]
       .map(String)
@@ -23,6 +22,7 @@ export function toGenerateOptions(flags: GenerateFlags): GenerateOptions {
       ),
     dryRun: flags["dry-run"],
     trace: flags["trace"],
+    verbose: flags["verbose"],
     run: flags["run"].map((pattern) => new RegExp(pattern)),
     skip: flags["skip"].map((pattern) => new RegExp(pattern)),
     include: flags["include"]

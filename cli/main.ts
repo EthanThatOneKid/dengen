@@ -17,7 +17,7 @@ async function main() {
     loggers: {
       [GENERATE]: {
         // Suppress log messages if not verbose.
-        level: flags.verbose ? "DEBUG" : "WARNING",
+        level: options.verbose ? "DEBUG" : "WARNING",
         handlers: ["console"],
       },
     },
