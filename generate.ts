@@ -1,10 +1,25 @@
 import { createGraph, getLogger } from "./deps.ts";
+import { parseComments } from "./parse/mod.ts";
 
 /**
  * generate runs procedures defined in comment annotations.
  */
 export async function generate(options: GenerateOptions): Promise<void> {
+  logger().info("Generating...");
   const graph = await createGraph(options.rootSpecifiers);
+  for (const module of graph.modules) {
+    const specifier = new URL(module.specifier);
+    logger().info(specifier);
+    const content = await Deno.readTextFile(specifier);
+    const comments = parseComments(content);
+    console.log({ content, comments });
+
+    // TODO: Move Dengen to etok.codes/deno_generate.
+    // TODO: Finish implementing generate function.
+    // See:
+    // https://github.com/EthanThatOneKid/deno_generate/tree/dev/lib/parse
+  }
+
   logger().info(JSON.stringify(graph, undefined, "  "));
 }
 

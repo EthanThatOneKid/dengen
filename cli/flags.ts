@@ -12,8 +12,10 @@ import type { GenerateOptions } from "../mod.ts";
  * toGenerateOptions converts CLI flags to GenerateOptions.
  */
 export function toGenerateOptions(flags: GenerateFlags): GenerateOptions {
+  console.log({ flags });
   return {
-    rootSpecifiers: flags["--"]
+    rootSpecifiers: flags["_"]
+      .map(String)
       .map((specifier) =>
         isAbsolute(specifier)
           ? specifier
@@ -21,8 +23,8 @@ export function toGenerateOptions(flags: GenerateFlags): GenerateOptions {
       ),
     dryRun: flags["dry-run"],
     trace: flags["trace"],
-    run: flags["run"].map(RegExp),
-    skip: flags["skip"].map(RegExp),
+    run: flags["run"].map((pattern) => new RegExp(pattern)),
+    skip: flags["skip"].map((pattern) => new RegExp(pattern)),
     include: flags["include"]
       .map((specifierOrGlob) =>
         isGlob(specifierOrGlob)
@@ -48,7 +50,7 @@ export type GenerateFlags = ReturnType<typeof parseGenerateFlags>;
  */
 export function parseGenerateFlags(args: string[]) {
   return parse(args, {
-    "--": true,
+    "--": false,
     stopEarly: true,
     string: ["run", "skip", "include", "exclude"],
     collect: ["run", "skip", "include", "exclude"],

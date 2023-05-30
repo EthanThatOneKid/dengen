@@ -1,4 +1,4 @@
-import { setup } from "../deps.ts";
+import { handlers, setup } from "../deps.ts";
 import { GENERATE, generate } from "../mod.ts";
 import { parseGenerateFlags, toGenerateOptions } from "./flags.ts";
 
@@ -7,7 +7,7 @@ if (import.meta.main) {
 }
 
 /**
- * main is the entrypoint of the Dengen CLI.
+ * main is the entrypoint of the program.
  */
 async function main() {
   const flags = parseGenerateFlags(Deno.args);
@@ -17,8 +17,12 @@ async function main() {
     loggers: {
       [GENERATE]: {
         // Suppress log messages if not verbose.
-        level: flags.verbose ? "DEBUG" : "ERROR",
+        level: flags.verbose ? "DEBUG" : "WARNING",
+        handlers: ["console"],
       },
+    },
+    handlers: {
+      console: new handlers.ConsoleHandler("DEBUG"),
     },
   });
 
