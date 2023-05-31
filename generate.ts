@@ -8,53 +8,86 @@ export async function generate(options: GenerateOptions): Promise<void> {
   logger().info("Generating...");
   const graph = await createGraph(options.rootSpecifiers);
   for (const module of graph.modules) {
+    // Exclude the module if it matches any of the exclude patterns.
+    const exclude = options.exclude.some((re) => re.test(module.specifier));
+    if (exclude) {
+      continue;
+    }
+
+    // Include the module if it matches any of the include patterns or if
+    // there are no include patterns.
+    const include = options.include.length === 0 ||
+      options.include.some((re) => re.test(module.specifier));
+    if (!include) {
+      continue;
+    }
+
+    // Run the generators.
     const specifier = new URL(module.specifier);
     logger().info(`Generating ${specifier}`);
-    const content = await Deno.readTextFile(specifier);
-    const comments = parseComments(content);
+    const comments = await parseComments(
+      Deno.openSync(specifier, { "read": true }),
+    );
     const aliases = new Map<string, string[]>();
     for (const comment of comments) {
+      // Skip the comment if it matches any of the skip patterns.
+      const skip = options.skip.some((re) => re.test(comment.original));
+      if (skip) {
+        continue;
+      }
+
+      // Run the comment if it matches any of the run patterns or if there
+      // are no run patterns.
+      const run = options.run.length === 0 ||
+        options.run.some((re) => re.test(comment.original));
+      if (!run) {
+        continue;
+      }
+
+      // Add the comment to the aliases map if it is an alias.
       if (comment.alias) {
         aliases.set(comment.alias, comment.args);
         continue;
       }
 
+      // Construct the command details.
       const args = aliases.has(comment.args[0])
         ? aliases.get(comment.args[0])!.concat(comment.args.slice(1))
         : comment.args;
-      const cwd = new URL(dirname(module.specifier));
       const details = args.join(" ");
       if (options.trace) {
         console.log(details);
       }
 
+      // Skip the command if this is a dry run.
       if (options.dryRun) {
         continue;
       }
 
+      // Run the generator.
+      const cwd = new URL(dirname(module.specifier));
       const command = new Deno.Command(args[0], {
         args: args.slice(1),
         cwd,
         stdout: "piped",
         stderr: "piped",
       });
-      const process = command.spawn();
+      const output = command.outputSync();
       if (options.verbose) {
-        process.stdout.pipeTo(Deno.stdout.writable);
-        process.stderr.pipeTo(Deno.stderr.writable);
+        Deno.stdout.writable.getWriter().write(output.stdout);
+        Deno.stderr.writable.getWriter().write(output.stderr);
       }
 
-      const status = await process.status;
-      if (!status.success) {
-        logger().error(`Failed to execute ${details}`);
+      // Stop running generators in this module if the process failed.
+      if (!output.success) {
+        logger().error(`Failed to execute "${details}"`);
         break;
       }
 
-      logger().info(`Successfully executed ${details}`);
+      // Log the success.
+      logger().info(`Successfully executed "${details}"`);
     }
   }
-
-  logger().info(JSON.stringify(graph, undefined, "  "));
 }
 
 /**
