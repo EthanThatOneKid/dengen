@@ -1,4 +1,4 @@
-# `deno generate` prototype
+# Dengen
 
 [![deno doc](https://doc.deno.land/badge.svg)](https://deno.land/x/generate)
 
